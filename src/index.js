@@ -8,19 +8,20 @@ assertRuntimeConfig();
 
 const context = await openBrowserContext({
   profileDir: config.profileDir,
-  headless: process.env.HEADLESS !== 'false'
+  headless: process.env.HEADLESS !== 'false',
+  storageStateFile: config.storageStateFile
 });
 
 const page = await getOrCreatePage(context);
 await openMax(page, config.maxUrl);
 
 if (!(await isLoggedIn(page))) {
-  console.log('[startup] MAX Web не авторизован.');
-  console.log('[startup] На Railway удобнее сначала выполнить локально: npm run auth, затем загрузить профиль в /data/playwright-profile.');
+  console.log('[startup] MAX Web is not authorized.');
+  console.log('[startup] Run locally: npm run auth, then upload storage-state.json to /data/storage-state.json.');
   await waitForLogin(page);
 }
 
-console.log(`[startup] Сервис запущен. Проверка каждые ${config.checkIntervalSeconds} секунд.`);
+console.log(`[startup] Service started. Checking every ${config.checkIntervalSeconds} seconds.`);
 
 process.on('SIGINT', async () => {
   await context.close();
@@ -37,7 +38,7 @@ async function scanOnce() {
   const chats = await readChats(page);
   const unreadChats = chats.filter((chat) => chat.unreadCount > 0);
 
-  console.log(`[scan] Чатов найдено: ${chats.length}; с непрочитанными: ${unreadChats.length}`);
+  console.log(`[scan] Chats found: ${chats.length}; unread: ${unreadChats.length}`);
 
   for (const chat of unreadChats) {
     const messages = await readLatestIncomingMessages(page, chat);
@@ -52,7 +53,7 @@ async function scanOnce() {
       });
 
       markNotified(state, message.id);
-      console.log(`[telegram] Уведомление отправлено: ${message.chatTitle}`);
+      console.log(`[telegram] Notification sent: ${message.chatTitle}`);
     }
   }
 
@@ -63,7 +64,7 @@ while (true) {
   try {
     await scanOnce();
   } catch (error) {
-    console.error('[scan] Ошибка проверки:', error);
+    console.error('[scan] Check failed:', error);
   }
 
   await page.waitForTimeout(config.checkIntervalSeconds * 1000);

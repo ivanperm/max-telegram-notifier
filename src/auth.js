@@ -1,10 +1,11 @@
 import { createInterface } from 'node:readline/promises';
 import { stdin as input, stdout as output } from 'node:process';
 import { config } from './config.js';
-import { openBrowserContext, getOrCreatePage } from './browser.js';
+import { openBrowserContext, getOrCreatePage, saveStorageState } from './browser.js';
 import { isLoggedIn, openMax } from './max-web.js';
 
 const profileDir = process.env.LOCAL_PLAYWRIGHT_PROFILE_DIR || config.localProfileDir;
+const storageStateFile = process.env.LOCAL_STORAGE_STATE_FILE || config.localStorageStateFile;
 const context = await openBrowserContext({
   profileDir,
   headless: false
@@ -27,7 +28,9 @@ try {
     rl.close();
   }
 
-  console.log('[auth] Saving browser profile. You can upload it to Railway: /data/playwright-profile');
+  await saveStorageState(context, storageStateFile);
+  console.log(`[auth] Saved storage state: ${storageStateFile}`);
+  console.log('[auth] Upload storage-state.json to Railway: /data/storage-state.json');
 } finally {
   await context.close().catch(() => {});
 }

@@ -2,6 +2,8 @@ node_modules/
 .env
 playwright-profile/
 state.json
+storage-state.json
 *.log
 playwright-profile*.tar.gz
+playwright-profile*.tar.gz.b64
 playwright-profile*.zip

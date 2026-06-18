@@ -6,8 +6,10 @@ export const config = {
   checkIntervalSeconds: Number(process.env.CHECK_INTERVAL_SECONDS || 15),
   maxUrl: process.env.MAX_URL || 'https://web.max.ru',
   profileDir: process.env.PLAYWRIGHT_PROFILE_DIR || '/data/playwright-profile',
+  storageStateFile: process.env.STORAGE_STATE_FILE || '/data/storage-state.json',
   stateFile: process.env.STATE_FILE || '/data/state.json',
-  localProfileDir: process.env.LOCAL_PLAYWRIGHT_PROFILE_DIR || './playwright-profile'
+  localProfileDir: process.env.LOCAL_PLAYWRIGHT_PROFILE_DIR || './playwright-profile',
+  localStorageStateFile: process.env.LOCAL_STORAGE_STATE_FILE || './storage-state.json'
 };
 
 export function assertRuntimeConfig() {
