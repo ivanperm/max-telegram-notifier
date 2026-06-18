@@ -18,6 +18,10 @@ await openMax(page, config.maxUrl);
 if (!(await isLoggedIn(page))) {
   console.log('[startup] MAX Web is not authorized.');
   console.log('[startup] Run locally: npm run auth, then upload storage-state.json to /data/storage-state.json.');
+  if (process.env.HEADLESS !== 'false') {
+    await context.close();
+    process.exit(1);
+  }
   await waitForLogin(page);
 }
 

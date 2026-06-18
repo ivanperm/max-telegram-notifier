@@ -40,9 +40,12 @@ async function applyStorageState(context, storageStateFile) {
 
   try {
     state = JSON.parse(await readFile(storageStateFile, 'utf8'));
-  } catch {
+  } catch (error) {
+    console.log(`[browser] Storage state not loaded from ${storageStateFile}: ${error.message}`);
     return;
   }
+
+  console.log(`[browser] Loading storage state from ${storageStateFile}: ${(state.cookies || []).length} cookies, ${(state.origins || []).length} origins`);
 
   if (Array.isArray(state.cookies) && state.cookies.length > 0) {
     await context.addCookies(state.cookies).catch(() => {});
