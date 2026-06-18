@@ -3,3 +3,5 @@ node_modules/
 playwright-profile/
 state.json
 *.log
+playwright-profile*.tar.gz
+playwright-profile*.zip
