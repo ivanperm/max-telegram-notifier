@@ -1,12 +1,39 @@
 import { chromium } from 'playwright';
 import { dirname } from 'node:path';
-import { readFile } from 'node:fs/promises';
+import { access, readFile } from 'node:fs/promises';
 import { ensureDir } from './fs.js';
 
 export async function openBrowserContext({ profileDir, headless = true, storageStateFile = '' }) {
+  const storageState = storageStateFile && await loadStorageState(storageStateFile);
+
+  if (storageState) {
+    const browser = await chromium.launch({
+      headless,
+      args: [
+        '--disable-dev-shm-usage',
+        '--no-sandbox'
+      ]
+    });
+
+    const context = await browser.newContext({
+      storageState: storageStateFile,
+      viewport: { width: 1440, height: 1000 },
+      locale: 'ru-RU',
+      timezoneId: 'Asia/Yekaterinburg'
+    });
+
+    const closeContext = context.close.bind(context);
+    context.close = async (...args) => {
+      await closeContext(...args).catch(() => {});
+      await browser.close().catch(() => {});
+    };
+
+    return context;
+  }
+
   await ensureDir(profileDir);
 
-  const context = await chromium.launchPersistentContext(profileDir, {
+  return chromium.launchPersistentContext(profileDir, {
     headless,
     viewport: { width: 1440, height: 1000 },
     locale: 'ru-RU',
@@ -16,12 +43,6 @@ export async function openBrowserContext({ profileDir, headless = true, storageS
       '--no-sandbox'
     ]
   });
-
-  if (storageStateFile) {
-    await applyStorageState(context, storageStateFile);
-  }
-
-  return context;
 }
 
 export async function getOrCreatePage(context) {
@@ -32,43 +53,24 @@ export async function getOrCreatePage(context) {
 export async function saveStorageState(context, storageStateFile) {
   if (!storageStateFile) return;
   await ensureDir(dirname(storageStateFile));
-  await context.storageState({ path: storageStateFile });
+  await context.storageState({ path: storageStateFile, indexedDB: true });
 }
 
-async function applyStorageState(context, storageStateFile) {
+async function loadStorageState(storageStateFile) {
   let state;
 
   try {
+    await access(storageStateFile);
     state = JSON.parse(await readFile(storageStateFile, 'utf8'));
   } catch (error) {
     console.log(`[browser] Storage state not loaded from ${storageStateFile}: ${error.message}`);
-    return;
+    return null;
   }
 
-  console.log(`[browser] Loading storage state from ${storageStateFile}: ${(state.cookies || []).length} cookies, ${(state.origins || []).length} origins`);
+  const indexedDbOrigins = (state.origins || [])
+    .filter((origin) => Array.isArray(origin.indexedDB) && origin.indexedDB.length > 0)
+    .length;
 
-  if (Array.isArray(state.cookies) && state.cookies.length > 0) {
-    await context.addCookies(state.cookies).catch(() => {});
-  }
-
-  for (const originState of state.origins || []) {
-    if (!originState.origin) continue;
-
-    const page = await context.newPage();
-    try {
-      await page.goto(originState.origin, { waitUntil: 'domcontentloaded', timeout: 30000 });
-      await page.evaluate((data) => {
-        for (const item of data.localStorage || []) {
-          window.localStorage.setItem(item.name, item.value);
-        }
-        for (const item of data.sessionStorage || []) {
-          window.sessionStorage.setItem(item.name, item.value);
-        }
-      }, originState);
-    } catch {
-      // Cookies alone may still be enough; keep startup resilient.
-    } finally {
-      await page.close().catch(() => {});
-    }
-  }
+  console.log(`[browser] Loading storage state from ${storageStateFile}: ${(state.cookies || []).length} cookies, ${(state.origins || []).length} origins, ${indexedDbOrigins} IndexedDB origins`);
+  return state;
 }
